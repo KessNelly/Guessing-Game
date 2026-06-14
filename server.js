@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -16,9 +17,17 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// Serve static frontend files from public folder
+app.use(express.static('public'));
+
+// Fallback route - important for Render deployment
+app.get('*', (req, res) => {
+  res.sendFile(__dirname + '/public/index.html');
+});
+
 // In-memory storage
-const sessions = new Map(); // sessionId -> session data
-const users = new Map();    // socketId -> user info
+const sessions = new Map();
+const users = new Map();
 
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -27,7 +36,6 @@ function generateRoomCode() {
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  // Create a new game session
   socket.on('createSession', (data) => {
     const { username } = data;
     const sessionId = generateRoomCode();
@@ -53,7 +61,6 @@ io.on('connection', (socket) => {
     io.to(`room:${sessionId}`).emit('playerJoined', { players: session.players });
   });
 
-  // Join session
   socket.on('joinSession', (data) => {
     const { sessionId, username } = data;
     const session = sessions.get(sessionId);
@@ -77,11 +84,9 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Start game (GM only)
   socket.on('startGame', (data) => {
     const { sessionId } = data;
     const session = sessions.get(sessionId);
-    const user = users.get(socket.id);
 
     if (!session || session.gameMaster.socketId !== socket.id) {
       socket.emit('error', { message: 'Not authorized' });
@@ -102,7 +107,6 @@ io.on('connection', (socket) => {
     });
   });
 
-  // GM creates question
   socket.on('createQuestion', (data) => {
     const { sessionId, question, answer } = data;
     const session = sessions.get(sessionId);
@@ -139,7 +143,6 @@ io.on('connection', (socket) => {
     }, 1000);
   });
 
-  // Player makes a guess
   socket.on('makeGuess', (data) => {
     const { sessionId, guess } = data;
     const session = sessions.get(sessionId);
@@ -215,7 +218,6 @@ io.on('connection', (socket) => {
     }, 5000);
   }
 
-  // Leave session
   socket.on('leaveSession', (data) => {
     const { sessionId } = data;
     const user = users.get(socket.id);
@@ -248,7 +250,6 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Chat
   socket.on('chatMessage', (data) => {
     const { sessionId, message } = data;
     const user = users.get(socket.id);
@@ -266,5 +267,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
