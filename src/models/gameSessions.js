@@ -1,4 +1,4 @@
-const Player = require('./Player');
+const Player = require('./player');
 
 class GameSession {
   constructor(id, gameMasterId, gameMasterUsername) {

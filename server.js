@@ -5,7 +5,6 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
-// IMPORTANT: Correct path to gameSocket
 const { initializeGameSockets } = require('./src/sockets/gameSocket');
 
 const app = express();
@@ -36,5 +35,5 @@ module.exports = { io };
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
