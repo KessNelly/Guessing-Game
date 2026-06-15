@@ -1,4 +1,4 @@
-const sessionManager = require('../models/SessionManager');
+const sessionManager = require('../models/sessionManager');
 
 function initializeGameSockets(io) {
 
