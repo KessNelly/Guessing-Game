@@ -7,202 +7,261 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.1/socket.io.min.js"></script>
     <style>
-        body { font-family: system-ui, sans-serif; }
-        .chat-scroll { max-height: 400px; overflow-y: auto; }
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        .chat-scroll { max-height: 420px; overflow-y: auto; scroll-behavior: smooth; }
+        .message { animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body class="bg-gray-950 text-white">
     <div class="max-w-6xl mx-auto p-4">
-        <h1 class="text-4xl font-bold text-center mb-8 text-emerald-400">🎯 GuessMaster</h1>
+        <h1 class="text-5xl font-bold text-center mb-8 text-emerald-400 tracking-tight">🎯 GuessMaster</h1>
         
-        <div id="lobby" class="space-y-6">
+        <!-- Lobby Screen -->
+        <div id="lobby" class="space-y-6 max-w-md mx-auto">
             <div class="flex gap-4">
-                <input id="username" type="text" placeholder="Your username" class="bg-gray-800 border border-gray-700 rounded px-4 py-3 flex-1">
-                <button onclick="createSession()" class="bg-emerald-600 hover:bg-emerald-700 px-8 py-3 rounded font-medium">Create Game</button>
+                <input id="username" type="text" placeholder="Your username" 
+                       class="bg-gray-800 border border-gray-700 rounded-xl px-5 py-4 flex-1 focus:outline-none focus:border-emerald-500 text-lg">
+                <button onclick="createSession()" 
+                        class="bg-emerald-600 hover:bg-emerald-700 px-10 py-4 rounded-xl font-semibold whitespace-nowrap">
+                    Create Game
+                </button>
             </div>
             
             <div class="flex gap-4">
-                <input id="joinCode" type="text" placeholder="Enter room code" class="bg-gray-800 border border-gray-700 rounded px-4 py-3 flex-1 uppercase">
-                <button onclick="joinSession()" class="bg-blue-600 hover:bg-blue-700 px-8 py-3 rounded font-medium">Join Game</button>
+                <input id="joinCode" type="text" placeholder="ROOM CODE" maxlength="6"
+                       class="bg-gray-800 border border-gray-700 rounded-xl px-5 py-4 flex-1 focus:outline-none focus:border-blue-500 text-lg uppercase tracking-widest">
+                <button onclick="joinSession()" 
+                        class="bg-blue-600 hover:bg-blue-700 px-10 py-4 rounded-xl font-semibold whitespace-nowrap">
+                    Join Game
+                </button>
             </div>
         </div>
 
+        <!-- Game Screen -->
         <div id="game" class="hidden">
-            <div class="flex gap-6">
-                <div class="w-64 bg-gray-900 rounded-xl p-4">
-                    <h3 class="font-semibold mb-3">Players</h3>
-                    <div id="playersList" class="space-y-2"></div>
-                    <div id="gmStatus" class="mt-4 text-xs text-emerald-400"></div>
+            <div class="flex flex-col lg:flex-row gap-6">
+                <!-- Players Sidebar -->
+                <div class="w-full lg:w-72 bg-gray-900 rounded-3xl p-5">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        👥 Players <span id="playerCount" class="text-emerald-400 text-sm font-normal"></span>
+                    </h3>
+                    <div id="playersList" class="space-y-3"></div>
+                    <div id="gmStatus" class="mt-6 text-emerald-400 font-medium text-center"></div>
                 </div>
 
-                <div class="flex-1 bg-gray-900 rounded-2xl p-6">
-                    <div id="status" class="text-center mb-6 text-xl font-medium"></div>
+                <!-- Main Game Area -->
+                <div class="flex-1 bg-gray-900 rounded-3xl p-6">
+                    <div id="status" class="text-center text-2xl font-semibold mb-6 min-h-[2.5rem]"></div>
                     
-                    <div id="questionArea" class="hidden bg-gray-800 rounded-xl p-6 mb-6">
-                        <div id="questionText" class="text-2xl mb-6"></div>
+                    <!-- Question -->
+                    <div id="questionArea" class="hidden bg-gray-800 rounded-2xl p-8 mb-8">
+                        <div id="questionText" class="text-2xl leading-relaxed mb-8 text-gray-100"></div>
                         <div class="flex gap-3">
-                            <input id="guessInput" type="text" placeholder="Your guess..." class="bg-gray-700 border border-gray-600 rounded px-4 py-3 flex-1">
-                            <button onclick="submitGuess()" class="bg-emerald-600 hover:bg-emerald-700 px-8 rounded font-medium">Guess</button>
+                            <input id="guessInput" type="text" placeholder="Type your guess..." 
+                                   class="bg-gray-700 border border-gray-600 rounded-2xl px-6 py-4 flex-1 focus:outline-none focus:border-emerald-500 text-lg">
+                            <button onclick="submitGuess()" 
+                                    class="bg-emerald-600 hover:bg-emerald-700 px-10 rounded-2xl font-semibold">
+                                Guess
+                            </button>
                         </div>
-                        <div id="attempts" class="text-sm text-gray-400 mt-2"></div>
+                        <div id="attempts" class="text-sm text-gray-400 mt-3 text-center"></div>
                     </div>
 
-                    <div id="timer" class="hidden text-center text-5xl font-mono text-orange-400 mb-6"></div>
+                    <!-- Timer -->
+                    <div id="timer" class="hidden text-center text-6xl font-mono font-bold text-orange-400 mb-8"></div>
 
-                    <div class="bg-gray-800 rounded-xl p-4">
-                        <h4 class="font-medium mb-3">Chat / Game Log</h4>
-                        <div id="chat" class="chat-scroll h-80 overflow-y-auto mb-4 space-y-2 text-sm"></div>
-                        <div class="flex gap-2">
-                            <input id="chatInput" type="text" placeholder="Type a message..." class="bg-gray-700 border border-gray-600 rounded px-4 py-3 flex-1" onkeypress="if(event.key === 'Enter') sendChat()">
-                            <button onclick="sendChat()" class="bg-gray-700 hover:bg-gray-600 px-6 rounded">Send</button>
-                        </div>
+                    <!-- Game Log -->
+                    <div class="bg-gray-800 rounded-2xl p-5">
+                        <h4 class="font-semibold mb-4 text-gray-300">Game Log</h4>
+                        <div id="chat" class="chat-scroll h-80 overflow-y-auto space-y-3 pr-2"></div>
                     </div>
                 </div>
             </div>
 
-            <div id="gmControls" class="hidden mt-6 flex gap-4 justify-center">
-                <button onclick="startGame()" class="bg-purple-600 hover:bg-purple-700 px-8 py-3 rounded font-medium">Start Round</button>
-                <button onclick="showCreateQuestion()" class="bg-indigo-600 hover:bg-indigo-700 px-8 py-3 rounded font-medium">Create Question</button>
+            <!-- GM Controls -->
+            <div id="gmControls" class="hidden mt-8 flex flex-wrap gap-4 justify-center">
+                <button onclick="showCreateQuestion()" 
+                        class="bg-indigo-600 hover:bg-indigo-700 px-8 py-4 rounded-2xl font-semibold">
+                        Create Question
+                </button>
+                <button onclick="startGame()" 
+                        class="bg-purple-600 hover:bg-purple-700 px-8 py-4 rounded-2xl font-semibold">
+                        Start Round
+                </button>
             </div>
         </div>
     </div>
 
     <script>
-        let socket;
-        let currentSessionId = null;
-        let isGameMaster = false;
-        let currentUsername = '';
+   let socket = null;
+    let currentSessionId = null;
+    let isGameMaster = false;
+    let currentUsername = '';
+    let attemptsUsed = 0;
+    let currentRoundActive = false;
 
-        function initSocket() {
-            // Render URL
-            socket = io('https://guessing-game-s9w1.onrender.com');
+    function initSocket() {
+        if (socket) socket.disconnect();
+        socket = io('https://guessing-game-s9w1.onrender.com');
+       // socket = io();
 
-            // ... (rest of the script is the same as before)
-            socket.on('sessionCreated', (data) => {
-                currentSessionId = data.sessionId;
-                document.getElementById('lobby').classList.add('hidden');
-                document.getElementById('game').classList.remove('hidden');
-                isGameMaster = true;
-                updatePlayers(data.session.players);
-                addSystemMessage(`Game created! Share this code: <strong>${currentSessionId}</strong>`);
-                updateGMStatus();
-            });
+        socket.on('connect', () => addSystemMessage('Connected'));
+        socket.on('disconnect', () => addSystemMessage('Disconnected'));
 
-            socket.on('playerJoined', (data) => {
-                updatePlayers(data.players);
-                if (data.message) addSystemMessage(data.message);
-            });
+        socket.on('sessionCreated', (data) => {
+            currentSessionId = data.sessionId;
+            isGameMaster = true;
+            switchToGameScreen();
+            updatePlayers(data.players);
+            addSystemMessage(`Room: <strong>${currentSessionId}</strong> (Share this code!)`);
+            updateGMControls();
+        });
 
-            socket.on('gameStarted', () => addSystemMessage('Round started!'));
-            socket.on('questionCreated', (data) => {
-                document.getElementById('questionText').textContent = data.question;
-                document.getElementById('questionArea').classList.remove('hidden');
-                document.getElementById('timer').classList.remove('hidden');
-                document.getElementById('timer').textContent = `⏱ ${data.timeLeft}s`;
-            });
+        socket.on('sessionJoined', (data) => {
+            currentSessionId = data.sessionId;
+            isGameMaster = data.role === 'gamemaster';
+            switchToGameScreen();
+            updatePlayers(data.players);
+            addSystemMessage(`Joined room ${currentSessionId}`);
+            updateGMControls();
+        });
 
-            socket.on('timerUpdate', (data) => {
-                document.getElementById('timer').textContent = `⏱ ${data.timeLeft}s`;
-            });
+        socket.on('playerJoined', (data) => {
+            updatePlayers(data.players);
+            if (data.message) addSystemMessage(data.message);
+        });
 
-            socket.on('roundEnded', (data) => {
-                document.getElementById('questionArea').classList.add('hidden');
-                document.getElementById('timer').classList.add('hidden');
-                if (data.hasWinner) {
-                    addSystemMessage(`🎉 ${data.winner.username} WINS! +10 points`);
-                } else {
-                    addSystemMessage(`⏰ Time's up! Answer: <strong>${data.answer}</strong>`);
-                }
-                updatePlayers(data.players);
-            });
+        socket.on('playerLeft', (data) => {
+            updatePlayers(data.players);
+            if (data.message) addSystemMessage(data.message);
+        });
 
-            socket.on('nextRoundReady', (data) => {
-                addSystemMessage(`New GM: ${data.newGameMaster}`);
-                updateGMStatus();
-                updatePlayers(data.players);
-            });
+        socket.on('questionCreated', (data) => {
+            document.getElementById('questionText').textContent = data.question;
+            document.getElementById('questionArea').classList.remove('hidden');
+            addSystemMessage('Question posted by GM');
+        });
 
-            socket.on('chatMessage', (msg) => addChatMessage(msg.username, msg.message));
-            socket.on('error', (err) => alert(err.message));
-            socket.on('playerLeft', (data) => updatePlayers(data.players));
-        }
+        socket.on('gameStarted', () => {
+            currentRoundActive = true;
+            attemptsUsed = 0;
+            updateAttemptsDisplay();
+            document.getElementById('timer').classList.remove('hidden');
+            addSystemMessage('🚀 Round started!');
+        });
 
-        // Rest of the functions (same as previous version)
-        function createSession() {
-            currentUsername = document.getElementById('username').value.trim();
-            if (!currentUsername) return alert('Enter username');
-            initSocket();
-            socket.emit('createSession', { username: currentUsername });
-        }
+        socket.on('timerUpdate', (data) => {
+            document.getElementById('timer').textContent = `⏱ ${data.timeLeft}s`;
+        });
 
-        function joinSession() {
-            currentUsername = document.getElementById('username').value.trim();
-            const code = document.getElementById('joinCode').value.trim().toUpperCase();
-            if (!currentUsername || !code) return alert('Enter username and code');
-            initSocket();
-            socket.emit('joinSession', { sessionId: code, username: currentUsername });
-        }
-
-        function updatePlayers(players) {
-            const container = document.getElementById('playersList');
-            container.innerHTML = players.map(p => `
-                <div class="flex justify-between bg-gray-800 px-4 py-2 rounded-lg">
-                    <span>${p.username}</span>
-                    <span class="text-emerald-400">${p.score} pts</span>
-                </div>
-            `).join('');
-        }
-
-        function updateGMStatus() {
-            document.getElementById('gmStatus').textContent = isGameMaster ? '👑 You are Game Master' : '';
-            document.getElementById('gmControls').classList.toggle('hidden', !isGameMaster);
-        }
-
-        function startGame() {
-            if (currentSessionId) socket.emit('startGame', { sessionId: currentSessionId });
-        }
-
-        function showCreateQuestion() {
-            const q = prompt("Enter question:");
-            const a = prompt("Enter correct answer:");
-            if (q && a && currentSessionId) {
-                socket.emit('createQuestion', { sessionId: currentSessionId, question: q, answer: a });
+        socket.on('guessResult', (data) => {
+            if (data.correct) {
+                addSystemMessage(`Correct answer! You have won`);
+            } else {
+                attemptsUsed = data.attemptsUsed;
+                updateAttemptsDisplay();
+                addSystemMessage(`Wrong guess. ${3 - attemptsUsed} attempts remaining`);
             }
-        }
+        });
 
-        function submitGuess() {
-            const guess = document.getElementById('guessInput').value.trim();
-            if (guess && currentSessionId) {
-                socket.emit('makeGuess', { sessionId: currentSessionId, guess });
-                document.getElementById('guessInput').value = '';
+        socket.on('roundEnded', (data) => {
+            currentRoundActive = false;
+            document.getElementById('questionArea').classList.add('hidden');
+            document.getElementById('timer').classList.add('hidden');
+            if (data.hasWinner && data.winner) {
+                addSystemMessage(`🏆 ${data.winner.username} WINS +10 points!`);
+            } else {
+                addSystemMessage(`Time's up! Answer: <strong>${data.answer}</strong>`);
             }
-        }
+            updatePlayers(data.players);
+        });
 
-        function sendChat() {
-            const msg = document.getElementById('chatInput').value.trim();
-            if (msg && currentSessionId) {
-                socket.emit('chatMessage', { sessionId: currentSessionId, message: msg });
-                document.getElementById('chatInput').value = '';
-            }
-        }
+        socket.on('nextRoundReady', (data) => {
+            isGameMaster = data.newGameMaster === currentUsername;
+            updateGMControls();
+            addSystemMessage(`New GM: ${data.newGameMaster}`);
+        });
 
-        function addSystemMessage(text) {
-            const chat = document.getElementById('chat');
-            const div = document.createElement('div');
-            div.className = 'text-emerald-400 italic py-1';
-            div.innerHTML = text;
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
-        }
+        socket.on('error', (err) => alert(err.message || 'Error'));
+    }
 
-        function addChatMessage(user, msg) {
-            const chat = document.getElementById('chat');
-            const div = document.createElement('div');
-            div.className = 'py-1';
-            div.innerHTML = `<strong>${user}:</strong> ${msg}`;
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
+    function createSession() {
+        currentUsername = document.getElementById('username').value.trim();
+        if (!currentUsername) return alert('Enter username');
+        initSocket();
+        socket.emit('createSession', { username: currentUsername });
+    }
+
+    function joinSession() {
+        currentUsername = document.getElementById('username').value.trim();
+        const code = document.getElementById('joinCode').value.trim().toUpperCase();
+        if (!currentUsername || !code) return alert('Username and code required');
+        initSocket();
+        socket.emit('joinSession', { sessionId: code, username: currentUsername });
+    }
+
+    function switchToGameScreen() {
+        document.getElementById('lobby').classList.add('hidden');
+        document.getElementById('game').classList.remove('hidden');
+    }
+
+    function updatePlayers(players) {
+        const container = document.getElementById('playersList');
+        let html = '';
+        players.forEach(p => {
+            const isMe = p.username === currentUsername;
+            html += `
+                <div class="flex justify-between bg-gray-800 px-5 py-3 rounded-2xl ${isMe ? 'ring-2 ring-emerald-500' : ''}">
+                    <span>${p.username} ${p.role === 'gamemaster' ? '👑' : ''}</span>
+                    <span class="font-mono">${p.score} pts</span>
+                </div>`;
+        });
+        container.innerHTML = html;
+        document.getElementById('playerCount').textContent = `(${players.length})`;
+    }
+
+    function updateGMControls() {
+        document.getElementById('gmStatus').textContent = isGameMaster ? '👑 You are Game Master' : '';
+        document.getElementById('gmControls').classList.toggle('hidden', !isGameMaster);
+    }
+
+    function updateAttemptsDisplay() {
+        document.getElementById('attempts').textContent = `Attempts: ${attemptsUsed}/3`;
+    }
+
+    function showCreateQuestion() {
+        if (!isGameMaster) return;
+        const q = prompt("Enter question:");
+        const a = prompt("Enter correct answer:");
+        if (q && a) socket.emit('createQuestion', { sessionId: currentSessionId, question: q, answer: a });
+    }
+
+    function startGame() {
+        if (currentSessionId) socket.emit('startGame', { sessionId: currentSessionId });
+    }
+
+    function submitGuess() {
+        const input = document.getElementById('guessInput');
+        const guess = input.value.trim();
+        if (guess && currentSessionId) {
+            socket.emit('submitGuess', { sessionId: currentSessionId, guess });
+            input.value = '';
         }
-    </script>
+    }
+
+    function addSystemMessage(text) {
+        const chat = document.getElementById('chat');
+        const div = document.createElement('div');
+        div.className = 'message text-emerald-400 italic py-1';
+        div.innerHTML = text;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    window.addEventListener('beforeunload', () => {
+        if (socket) socket.emit('leaveSession');
+    });
+</script>
 </body>
 </html>
