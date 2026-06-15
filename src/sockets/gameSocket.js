@@ -77,7 +77,7 @@ function initializeGameSockets(io) {
     socket.on('startGame', ({ sessionId }) => {
       const session = sessionManager.getSession(sessionId);
       if (!session || !session.isGameMaster(socket.id)) return socket.emit('error', { message: 'Not authorized' });
-      if (session.getPlayerCount() < 2) return socket.emit('error', { message: 'At least 2 players needed' });
+      if (session.getPlayerCount() < 3) return socket.emit('error', { message: 'At least 2 players needed' });
       if (!session.currentQuestion) return socket.emit('error', { message: 'Create a question first' });
 
       session.startRound(session.currentQuestion, session.correctAnswer);
